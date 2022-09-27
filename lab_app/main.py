@@ -31,10 +31,11 @@ login_manager.login_view = "login"
 
 
 class User(UserMixin):
-    def __init__(self, username, email, password):
+    def __init__(self, username, email, password, role):
         self.username = username
         self.email = email
         self.password = password
+        self.role = role
         self.authenticated = False
 
 
@@ -52,6 +53,9 @@ class User(UserMixin):
 
     def get_id(self):
         return self.username
+
+    def get_role(self):
+        return self.role
 
 
 def create_connection(db_file):
@@ -97,7 +101,6 @@ def load_user(user_id):
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    global username
     if current_user.is_authenticated:
         return redirect(url_for('lab_env_db'))
 
@@ -114,6 +117,7 @@ def login():
             if request.form['emailaddress'] == user.email:
                 if check_password_hash(password=request.form['password'], pwhash=user.password):
                     login_user(user)
+                    if user.
                     return redirect(url_for('lab_env_db'))
                 else:
                     flash("Wrong password .. please check", "info")
@@ -122,13 +126,6 @@ def login():
         else:
             flash("Your Username hasn't registered.. Have you registered to the system? Please register", "info")
     return render_template("login.html", form=form)
-
-
-def none_out_converter(value):
-    if value is None:
-        return False
-    return value
-
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
