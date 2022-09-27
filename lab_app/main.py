@@ -91,12 +91,12 @@ class LoginForm(Form):
 def load_user(user_id):
    conn = create_connection(os.path.join(currentlocation, 'userdb.db'))
    curs = conn.cursor()
-   curs.execute("SELECT USERNAME, EMAIL, PASSWORD FROM USERS where USERNAME=?", (user_id,))
+   curs.execute("SELECT USERNAME, EMAIL, PASSWORD, ROLE FROM USERS where USERNAME=?", (user_id,))
    lu = curs.fetchone()
    if lu is None:
       return None
    else:
-      return User(lu[0], lu[1], lu[2])
+      return User(lu[0], lu[1], lu[2], lu[3])
 
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/login', methods=['GET', 'POST'])
@@ -117,7 +117,8 @@ def login():
             if request.form['emailaddress'] == user.email:
                 if check_password_hash(password=request.form['password'], pwhash=user.password):
                     login_user(user)
-                    if user.
+                    if user.role == 'black_list':
+                        return "You are blocked: You do not have access to the system"
                     return redirect(url_for('lab_env_db'))
                 else:
                     flash("Wrong password .. please check", "info")
