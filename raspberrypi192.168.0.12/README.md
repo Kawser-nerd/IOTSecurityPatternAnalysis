@@ -38,4 +38,4 @@ YouTube: https://www.youtube.com/watch?v=hFqNiZ4p0Ss
 
 ## Circuit Diagram
 
-![Circuit Diagram](/Circuit.png?raw=true "Circuit Diagram")
+![Circuit Diagram](/raspberrypi192.168.0.12/Circuit.png192.168.0.12/Circuit.png?raw=true "Circuit Diagram")

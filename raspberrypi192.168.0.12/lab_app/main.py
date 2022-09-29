@@ -1,8 +1,7 @@
-import flask
 import requests
 from flask import Flask, render_template, request, flash, url_for, redirect
 from werkzeug.security import generate_password_hash, check_password_hash
-from wtforms import StringField, PasswordField, Form
+from wtforms import StringField, PasswordField, Form, SelectField
 from wtforms.validators import InputRequired, Length, EqualTo, DataRequired
 from wtforms.fields.html5 import EmailField
 from flask_login import LoginManager, UserMixin, login_required, login_user, logout_user, current_user
@@ -14,6 +13,7 @@ import datetime
 import arrow
 from chart_studio import plotly as py
 from plotly.graph_objs import *
+from subprocess import call
 
 currentlocation = os.path.dirname(os.path.abspath(__file__))
 
@@ -87,6 +87,23 @@ class LoginForm(Form):
     password = PasswordField('password', validators=[DataRequired(), Length(min=6, max=20)], render_kw={"placeholder": "Password"})
 
 
+class AdminForm(Form):
+    conn = create_connection(os.path.join(currentlocation, 'userdb.db'))
+    curs = conn.cursor()
+    curs.execute("SELECT USERNAME, EMAIL FROM USERS")
+    lu = curs.fetchall()
+    userlist=[]
+    emaillist=[]
+    accesslist = ['admin', 'white_list', 'black_list']
+    for username, email in lu:
+        userlist.append(username)
+        emaillist.append(email)
+
+    username_list = SelectField('username_list', choices=userlist)
+    emailaddress_list = SelectField('emailaddress_list', choices=emaillist)
+    access_list = SelectField('access_list', choices=accesslist)
+
+
 @login_manager.user_loader
 def load_user(user_id):
    conn = create_connection(os.path.join(currentlocation, 'userdb.db'))
@@ -97,6 +114,7 @@ def load_user(user_id):
       return None
    else:
       return User(lu[0], lu[1], lu[2], lu[3])
+
 
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/login', methods=['GET', 'POST'])
@@ -127,6 +145,7 @@ def login():
         else:
             flash("Your Username hasn't registered.. Have you registered to the system? Please register", "info")
     return render_template("login.html", form=form)
+
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
@@ -159,6 +178,29 @@ def signup():
             form = LoginForm()
             return render_template('login.html', form=form)
     return render_template("signup.html", form=form)
+
+
+@app.route("/admin", methods=['GET', 'POST'])
+def admin():
+    form = AdminForm(request.form)
+    if not current_user.is_authenticated:
+        flash("You are not logged in.. try to log in first", "info")
+        return render_template("login.html", form=LoginForm())
+    if not current_user.get_role() == 'admin':
+        flash("You are not admin.. You don't have access to admin page", "info")
+        return render_template("login.html", form=LoginForm())
+
+    if request.method == "POST" and form.validate():
+        username = form.username_list.data
+        emailaddress = form.emailaddress_list.data
+        access = form.access_list.data
+
+        conn = create_connection(os.path.join(currentlocation, 'userdb.db'))
+        c = conn.cursor()
+        c.execute("UPDATE USERS SET ROLE=? WHERE USERNAME=? AND EMAIL=?", (access, username, emailaddress))
+        conn.commit()
+        flash("Your user access is updated perfectly", "info")
+    return render_template("admin.html", form=form)
 
 
 @app.route("/lab_env_db", methods=['GET', 'POST'])  # Add date limits in the URL #Arguments: from=2015-03-04&to=2015-03-05
@@ -197,6 +239,7 @@ def lab_env_db():
                            query_string	= request.query_string,  # This query string is used
                            # by the Plotly link
                            hum_items 		= len(humidities))
+
 
 def get_records():
     from_date_str 	= request.args.get('from' ,time.strftime("%Y-%m-%d 00:00"))  # Get the from date value from the URL
@@ -249,6 +292,7 @@ def get_records():
     conn.close()
 
     return [temperatures, humidities, timezone, from_date_str, to_date_str]
+
 
 @app.route("/to_plotly", methods=['GET'])  # This method will send the data to ploty.
 def to_plotly():
